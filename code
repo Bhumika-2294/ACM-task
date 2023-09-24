@@ -1,66 +1,45 @@
-from flask import Flask, request, jsonify
-import jwt
-import datetime
-from functools import wraps
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
 
 # Sample database (in-memory)
 locations = []
-users = {'username': 'password'}  # Replace with a secure user database
 
-# Token required decorator
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get('x-access-token')
-
-        if not token:
-            return jsonify({'message': 'Token is missing'}), 401
-
-        try:
-            data = jwt.decode(token, app.config['SECRET_KEY'])
-        except:
-            return jsonify({'message': 'Token is invalid'}), 401
-
-        return f(*args, **kwargs)
-
-    return decorated
-
-# Endpoint for user registration
-@app.route('/api/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    users[data['username']] = data['password']
-    return jsonify({'message': 'User registered successfully'})
-
-# Endpoint to generate a token
-@app.route('/api/login', methods=['POST'])
-def login():
-    auth = request.authorization
-
-    if not auth or not auth.username or not auth.password:
-        return jsonify({'message': 'Could not verify'}), 401
-
-    if auth.username in users and users[auth.username] == auth.password:
-        token = jwt.encode({'username': auth.username, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
-        return jsonify({'token': token.decode('UTF-8')})
-
-    return jsonify({'message': 'Invalid credentials'}), 401
-
-# Endpoint to create a new travel location (Token required)
+# Endpoint to create a new travel location
 @app.route('/api/locations', methods=['POST'])
-@token_required
 def create_location():
     location = request.get_json()
     locations.append(location)
-    return jsonify({'message': 'Location created successfully'})
+    return jsonify({'message': 'Location created successfully'}), 201
 
 # Endpoint to get all travel locations
 @app.route('/api/locations', methods=['GET'])
 def get_locations():
     return jsonify(locations)
+
+# Endpoint to get a specific travel location by ID
+@app.route('/api/locations/<int:location_id>', methods=['GET'])
+def get_location(location_id):
+    if location_id < 0 or location_id >= len(locations):
+        return jsonify({'message': 'Location not found'}), 404
+    return jsonify(locations[location_id])
+
+# Endpoint to update a travel location by ID
+@app.route('/api/locations/<int:location_id>', methods=['PUT'])
+def update_location(location_id):
+    if location_id < 0 or location_id >= len(locations):
+        return jsonify({'message': 'Location not found'}), 404
+    new_location = request.get_json()
+    locations[location_id] = new_location
+    return jsonify({'message': 'Location updated successfully'})
+
+# Endpoint to delete a travel location by ID
+@app.route('/api/locations/<int:location_id>', methods=['DELETE'])
+def delete_location(location_id):
+    if location_id < 0 or location_id >= len(locations):
+        return jsonify({'message': 'Location not found'}), 404
+    del locations[location_id]
+    return jsonify({'message': 'Location deleted successfully'})
 
 if __name__ == '__main__':
     app.run(debug=True)
