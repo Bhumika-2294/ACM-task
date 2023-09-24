@@ -1,0 +1,65 @@
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+# Sample database (in-memory)
+locations = [
+    {"id": 1, "name": "Paris", "description": "The City of Love"},
+    {"id": 2, "name": "New York", "description": "The Big Apple"},
+    {"id": 3, "name": "Tokyo", "description": "The Capital of Japan"},
+]
+
+# Generate a unique ID for a new location
+def generate_location_id():
+    if locations:
+        return max(location["id"] for location in locations) + 1
+    else:
+        return 1
+
+# Endpoint to create a new travel location
+@app.route('/api/locations', methods=['POST'])
+def create_location():
+    data = request.get_json()
+    new_location = {
+        "id": generate_location_id(),
+        "name": data["name"],
+        "description": data["description"]
+    }
+    locations.append(new_location)
+    return jsonify({"message": "Location created successfully", "location": new_location}), 201
+
+# Endpoint to get all travel locations
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    return jsonify(locations)
+
+# Endpoint to get a specific travel location by ID
+@app.route('/api/locations/<int:location_id>', methods=['GET'])
+def get_location(location_id):
+    location = next((loc for loc in locations if loc["id"] == location_id), None)
+    if location is None:
+        return jsonify({"message": "Location not found"}), 404
+    return jsonify(location)
+
+# Endpoint to update a travel location by ID
+@app.route('/api/locations/<int:location_id>', methods=['PUT'])
+def update_location(location_id):
+    location = next((loc for loc in locations if loc["id"] == location_id), None)
+    if location is None:
+        return jsonify({"message": "Location not found"}), 404
+    data = request.get_json()
+    location["name"] = data["name"]
+    location["description"] = data["description"]
+    return jsonify({"message": "Location updated successfully", "location": location})
+
+# Endpoint to delete a travel location by ID
+@app.route('/api/locations/<int:location_id>', methods=['DELETE'])
+def delete_location(location_id):
+    location = next((loc for loc in locations if loc["id"] == location_id), None)
+    if location is None:
+        return jsonify({"message": "Location not found"}), 404
+    locations.remove(location)
+    return jsonify({"message": "Location deleted successfully"})
+
+if __name__ == '__main__':
+    app.run(debug=True)
